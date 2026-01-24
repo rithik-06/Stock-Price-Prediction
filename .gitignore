@@ -1,0 +1,40 @@
+
+# Python
+
+# Virtual Environment
+venv/
+stock/
+env/
+.venv/
+
+
+
+
+__pycache__/
+*.py[cod]
+.Python
+venv/
+env/
+
+# Data
+data/raw/*
+data/processed/*
+data/predictions/*
+
+# MLflow
+mlruns/
+
+# Logs
+logs/*
+
+# Airflow
+airflow.db
+airflow.cfg
+
+# IDE
+.idea/
+.vscode/
+
+# Environment
+.env
+EOF
