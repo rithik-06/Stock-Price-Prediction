@@ -1,7 +1,6 @@
-"""
-fetch stock data from yahoo finance
-this scripts downloads historical stock prices
-"""
+
+ ## fetch stock data from yahoo finance
+## this scripts downloads historical stock prices
 
 import yfinance as yf
 import pandas as pd
