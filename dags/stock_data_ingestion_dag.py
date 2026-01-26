@@ -1,24 +1,16 @@
-## airflow dag to fetch stock data daily
-
-## runs every day at 6 PM to download stck prices.
-
+"""
+Airflow DAG to fetch stock data daily.
+Runs every day at 6 PM to download stock prices.
+"""
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
-import sys
-import  os
+import yfinance as yf
+import pandas as pd
+from pathlib import Path
+import os
 
-from src.data.fetch_stock_data import project_root
-
-## add project root to python path so we dan import our modules
-
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, project_root)
-
-from src.data.fetch_stock_data import fetch_stock_data
-
-## default arguments for the DAG
-
+# Default arguments for the DAG
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
@@ -34,21 +26,35 @@ dag = DAG(
     'stock_data_ingestion',
     default_args=default_args,
     description='Fetch stock data from Yahoo Finance daily',
-    schedule_interval='0 18 * * 1-5',  # Run at 6 PM on weekdays (Mon-Fri)
+    schedule_interval='0 18 * * 1-5',
     catchup=False,
     tags=['stock', 'data-ingestion'],
 )
 
-# Task 1: Fetch Apple stock data
+
+# Task function to fetch stock data
 def fetch_apple_stock():
     """Fetch AAPL stock data and save to CSV."""
-    data_dir = os.path.join(project_root, 'data', 'raw')
     print("Starting to fetch AAPL stock data...")
-    df = fetch_stock_data('AAPL', period='1mo', output_dir=data_dir)
-    if df is not None:
-        print("Successfully fetched AAPL data")
-    else:
-        raise Exception("Failed to fetch AAPL data")
+
+    # Download data
+    ticker = 'AAPL'
+    df = yf.download(ticker, period='1mo', progress=False)
+
+    if df.empty:
+        raise Exception("No data found for AAPL")
+
+    print("Fetched " + str(len(df)) + " records")
+
+    # Save to CSV
+    output_dir = Path('/opt/airflow/data/raw')
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d")
+    filename = output_dir / (ticker + "_" + timestamp + ".csv")
+
+    df.to_csv(filename)
+    print("Saved to: " + str(filename))
 
 
 # Create the task
@@ -58,5 +64,5 @@ fetch_aapl_task = PythonOperator(
     dag=dag,
 )
 
-# Task sequence (just one task for now)
+# Task sequence
 fetch_aapl_task
