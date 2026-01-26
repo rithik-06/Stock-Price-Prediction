@@ -32,37 +32,49 @@ dag = DAG(
 )
 
 
-# Task function to fetch stock data
-def fetch_apple_stock():
-    """Fetch AAPL stock data and save to CSV."""
-    print("Starting to fetch AAPL stock data...")
+# Task function to fetch multiple stocks
+def fetch_stock_data_task():
+    """Fetch multiple stock tickers and save to CSV."""
 
-    # Download data
-    ticker = 'AAPL'
-    df = yf.download(ticker, period='1mo', progress=False)
+    # List of stocks to fetch
+    tickers = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN']
 
-    if df.empty:
-        raise Exception("No data found for AAPL")
+    for ticker in tickers:
+        print("Starting to fetch " + ticker + " stock data...")
 
-    print("Fetched " + str(len(df)) + " records")
+        try:
+            # Download data
+            df = yf.download(ticker, period='5y', progress=False)
 
-    # Save to CSV
-    output_dir = Path('/opt/airflow/data/raw')
-    output_dir.mkdir(parents=True, exist_ok=True)
+            if df.empty:
+                print("No data found for " + ticker)
+                continue
 
-    timestamp = datetime.now().strftime("%Y%m%d")
-    filename = output_dir / (ticker + "_" + timestamp + ".csv")
+            print("Fetched " + str(len(df)) + " records for " + ticker)
 
-    df.to_csv(filename)
-    print("Saved to: " + str(filename))
+            # Save to CSV
+            output_dir = Path('/opt/airflow/data/raw')
+            output_dir.mkdir(parents=True, exist_ok=True)
 
+            timestamp = datetime.now().strftime("%Y%m%d")
+            filename = output_dir / (ticker + "_" + timestamp + ".csv")
+
+            df.to_csv(filename)
+            print("Saved " + ticker + " to: " + str(filename))
+
+        except Exception as e:
+            print("Error fetching " + ticker + ": " + str(e))
+            continue
+
+    print("Finished fetching all stocks!")
 
 # Create the task
-fetch_aapl_task = PythonOperator(
-    task_id='fetch_aapl_stock',
-    python_callable=fetch_apple_stock,
+fetch_stocks_task = PythonOperator(
+    task_id='fetch_multiple_stocks',
+    python_callable=fetch_stock_data_task,
     dag=dag,
 )
 
+
 # Task sequence
-fetch_aapl_task
+fetch_stocks_task
