@@ -1,12 +1,17 @@
-
-## Generate technical indicators and features from raw stock data.
-
+"""
+Airflow DAG to generate features from raw stock data.
+Runs after stock data ingestion.
+"""
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
 from pathlib import Path
 import os
 
 
+# Feature calculation functions
 def calculate_moving_averages(df):
     """Calculate Simple and Exponential Moving Averages."""
     df['SMA_10'] = df['Close'].rolling(window=10).mean()
@@ -54,47 +59,46 @@ def calculate_volume_features(df):
 
 def calculate_price_features(df):
     """Calculate price-based features."""
-    # Daily returns
     df['Returns'] = df['Close'].pct_change()
-
-    # Lag features
     df['Close_Lag_1'] = df['Close'].shift(1)
     df['Close_Lag_7'] = df['Close'].shift(7)
-
-    # High-Low range
     df['HL_Range'] = df['High'] - df['Low']
     df['HL_Range_Pct'] = (df['HL_Range'] / df['Close']) * 100
-
     return df
 
 
-def generate_features(input_file, output_file):
-    """
-    Generate all features from raw stock data.
+def generate_features_for_stock(ticker, raw_dir, processed_dir):
+    """Generate features for a single stock."""
+    print("Processing features for " + ticker + "...")
 
-    Args:
-        input_file: Path to raw CSV file
-        output_file: Path to save processed CSV with features
-    """
-    print("Loading data from: " + str(input_file))
+    # Find latest raw file for this ticker
+    raw_path = Path(raw_dir)
+    files = list(raw_path.glob(ticker + "_*.csv"))
 
-    # Read CSV and ensure numeric columns
+    if not files:
+        print("No raw data found for " + ticker)
+        return
+
+    # Get most recent file
+    input_file = max(files, key=os.path.getmtime)
+    print("Reading from: " + str(input_file))
+
+    # Read and clean data
     df = pd.read_csv(input_file, index_col=0, parse_dates=True)
 
-    # Keep only the main OHLCV columns
+    # Keep only OHLCV columns
     columns_to_keep = ['Open', 'High', 'Low', 'Close', 'Volume']
     df = df[columns_to_keep]
 
-    # Convert to numeric, handling any issues
+    # Convert to numeric
     for col in columns_to_keep:
         df[col] = pd.to_numeric(df[col], errors='coerce')
 
-    # Drop any rows with NaN in main columns
     df = df.dropna()
 
-    print("Original data shape: " + str(df.shape))
+    print("Original shape: " + str(df.shape))
 
-    # Generate all features
+    # Generate features
     df = calculate_moving_averages(df)
     df = calculate_rsi(df)
     df = calculate_macd(df)
@@ -102,29 +106,61 @@ def generate_features(input_file, output_file):
     df = calculate_volume_features(df)
     df = calculate_price_features(df)
 
-    # Drop rows with NaN (from rolling windows at start)
+    # Drop NaN rows
     df = df.dropna()
 
-    print("After feature engineering shape: " + str(df.shape))
-    print("Features created: " + str(len(df.columns)))
+    print("After features shape: " + str(df.shape))
 
-    # Save processed data
-    output_path = Path(output_file)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    # Save
+    output_file = Path(processed_dir) / (ticker + "_features.csv")
     df.to_csv(output_file)
-
-    print("Saved processed data to: " + str(output_file))
-
-    return df
+    print("Saved to: " + str(output_file))
 
 
-if __name__ == "__main__":
-    # Test with one stock
-    project_root = Path(__file__).parent.parent.parent
-    input_file = project_root / "data" / "raw" / "AAPL_20260126.csv"
-    output_file = project_root / "data" / "processed" / "AAPL_features.csv"
+# Default arguments
+default_args = {
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'start_date': datetime(2026, 1, 25),
+    'email_on_failure': False,
+    'email_on_retry': False,
+    'retries': 1,
+    'retry_delay': timedelta(minutes=5),
+}
 
-    if input_file.exists():
-        generate_features(str(input_file), str(output_file))
-    else:
-        print("Input file not found: " + str(input_file))
+# Create DAG
+dag = DAG(
+    'feature_engineering',
+    default_args=default_args,
+    description='Generate technical indicators from raw stock data',
+    schedule_interval='30 18 * * 1-5',  # Run at 6:30 PM (after data ingestion)
+    catchup=False,
+    tags=['stock', 'features'],
+)
+
+
+# Task to generate features for all stocks
+def generate_all_features():
+    """Generate features for all stocks."""
+    tickers = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN']
+    raw_dir = '/opt/airflow/data/raw'
+    processed_dir = '/opt/airflow/data/processed'
+
+    for ticker in tickers:
+        try:
+            generate_features_for_stock(ticker, raw_dir, processed_dir)
+        except Exception as e:
+            print("Error processing " + ticker + ": " + str(e))
+            continue
+
+    print("Finished processing all stocks!")
+
+
+# Create task
+generate_features_task = PythonOperator(
+    task_id='generate_features',
+    python_callable=generate_all_features,
+    dag=dag,
+)
+
+generate_features_task
