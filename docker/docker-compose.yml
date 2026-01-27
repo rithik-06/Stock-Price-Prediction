@@ -78,5 +78,22 @@ services:
       <<: *airflow-common-env
     restart: on-failure
 
+  mlflow:
+    image: python:3.10-slim
+    working_dir: /mlflow
+    volumes:
+      - ../mlruns:/mlflow/mlruns
+      - ../data:/mlflow/data
+    ports:
+      - "5000:5000"
+    command: >
+      bash -c "pip install mlflow &&
+               mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri file:///mlflow/mlruns --default-artifact-root file:///mlflow/mlruns"
+    restart: always
+
+
+
 volumes:
   postgres-db-volume:
+
+
