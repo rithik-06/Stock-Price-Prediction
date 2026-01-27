@@ -1,4 +1,4 @@
-"
+
 ##  Airflow DAG to generate features from raw stock data.
 ## uns after stock data ingestion.
 
