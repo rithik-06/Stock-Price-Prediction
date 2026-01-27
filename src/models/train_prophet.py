@@ -81,7 +81,7 @@ def train_prophet_model(ticker, data_file, mlflow_tracking_uri):
         mlflow.log_metric("mape", mape)
 
         # Log model
-        mlflow.sklearn.log_model(model, "model")
+        #mlflow.sklearn.log_model(model, "model")
 
         print("Model logged to MLflow successfully!")
 
