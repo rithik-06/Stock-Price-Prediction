@@ -1,7 +1,7 @@
-"""
-Airflow DAG to generate features from raw stock data.
-Runs after stock data ingestion.
-"""
+"
+##  Airflow DAG to generate features from raw stock data.
+## uns after stock data ingestion.
+
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
@@ -128,7 +128,9 @@ default_args = {
     'retry_delay': timedelta(minutes=5),
 }
 
+
 # Create DAG
+
 dag = DAG(
     'feature_engineering',
     default_args=default_args,
@@ -137,7 +139,6 @@ dag = DAG(
     catchup=False,
     tags=['stock', 'features'],
 )
-
 
 # Task to generate features for all stocks
 def generate_all_features():
