@@ -17,9 +17,10 @@ venv/
 env/
 
 # Data
-data/raw/*
+#data/raw/*
 #data/processed/*
-data/predictions/*
+#data/predictions/*
+
 
 # MLflow
 mlruns/

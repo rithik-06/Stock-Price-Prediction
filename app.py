@@ -83,7 +83,7 @@ with st.sidebar:
 def load_stock_data(ticker):
     """Load processed stock data with features"""
     try:
-        data_path = Path(f"data/processed/{ticker}_features.csv")
+        data_path = Path(f"demo_data/{ticker}_features.csv")
         if data_path.exists():
             df = pd.read_csv(data_path, index_col=0, parse_dates=True)
             return df
