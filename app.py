@@ -46,7 +46,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Header
-st.markdown("<h1>📈 Stock Price Prediction Dashboard</h1>", unsafe_allow_html=True)
+st.markdown("<h1>📈 Stock Price Prediction </h1>", unsafe_allow_html=True)
 st.markdown("### Powered by Prophet, XGBoost, and LightGBM")
 
 # Sidebar
